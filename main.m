@@ -1,11 +1,12 @@
 %% Initialization
-clear ; close all; clc
+clear ; close all; clc;tic
 ddebug=0;
 %% Setup the parameters you will use for this exercise
 input_layer_size  = 784;  % 28x28 Input Images of Digits
 hidden_layer_size = 25;   % 25 hidden units
 num_labels = 10;          % 10 labels, from 1 to 10
 % (note that we have mapped "0" to label 10)
+find_max_weight=0;
 
 load('Train.mat');
 y=cell2mat(Train(:,2))+1;
@@ -62,7 +63,8 @@ fprintf('\nTraining Neural Network... \n')
 num_iters=20;
 alpha = 0.3;
 J_ = zeros(num_iters, 1);
-Xnew=[ones(m,1) X];
+a1=[ones(m,1) X];
+iterplot=[1:num_iters];
 
 Theta1_pos_max=0;
 
@@ -70,7 +72,7 @@ for iter = 1:num_iters
     Theta1_grad = zeros(size(Theta1));
     Theta2_grad = zeros(size(Theta2));
     
-    z2=Theta1*Xnew';
+    z2=Theta1*a1';
     a2=sigmoid(z2);
     a2=[ones(1,m);a2];
     z3=Theta2*a2;
@@ -78,35 +80,24 @@ for iter = 1:num_iters
     
     J(iter)=sum(sum(-y_tmp.*log(a3)-(1-y_tmp).*log(1-a3)))/m;
     [iter,J(iter)];
-    
-    DELT2=0;
-    DELT1=0;
-    for ct1=1:m
-        a1=Xnew(ct1,:);
-        z2=Theta1*a1';
-        a2=sigmoid(z2);
-        a2=[1;a2];
-        z3=Theta2*a2;
-        a3=sigmoid(z3);
-        
-        delt3=a3-y_tmp(:,ct1);
-        delt2=Theta2'*delt3.*(a2.*(1-a2));
-        delt2=delt2(2:end,:);
-        DELT2=DELT2+delt3*a2';
-        DELT1=DELT1+delt2*a1;
-    end
-    Theta2_grad=DELT2/m;
+
+    delt3=a3-y_tmp;
+    delt2=Theta2'*delt3.*(a2.*(1-a2));
+    delt2=delt2(2:end,:);
+    Theta2_grad=delt3*a2'/m;
     Theta2_grad(:,2:end)=Theta2_grad(:,2:end);
-    Theta1_grad=DELT1/m;
-    Theta1_grad(:,2:end)=Theta1_grad(:,2:end);
+    Theta1_grad=delt2*a1/m;
+    Theta1_grad(:,2:end)=Theta1_grad(:,2:end);   
     Theta1=Theta1-alpha*Theta1_grad;
     Theta2=Theta2-alpha*Theta2_grad;
     
     %find max weight
+    if find_max_weight
     Theta1_pos_max=max(Theta1(Theta1>0));
     Theta1_neg_max=-max(-Theta1(Theta1<0));
     Theta2_pos_max=max(Theta2(Theta2>0));
     Theta2_neg_max=-max(-Theta2(Theta2<0));
+    end
 end
 
 if (0)
@@ -131,4 +122,10 @@ pred = predict(Theta1, Theta2, Xtest);
 
 fprintf('\nTest Set Accuracy: %f\n', mean(double(pred == ytest)) * 100);
 predic=mean(double(pred == ytest)) * 100;
-iterplot=[1:num_iters];
+toc
+
+if (0)
+plot(iterplot,J,'*')
+xlabel('iterations');ylabel('J')
+end
+
