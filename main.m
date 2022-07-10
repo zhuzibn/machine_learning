@@ -6,13 +6,17 @@ input_layer_size  = 784;  % 28x28 Input Images of Digits
 hidden_layer_size = 25;   % 25 hidden units
 num_labels = 10;          % 10 labels, from 1 to 10
 % (note that we have mapped "0" to label 10)
-find_max_weight=0;
+find_max_weight=1;
 discretization=0;%1/0: discretize/not-discretize the weight
 if discretization
-    discrete_level=100;
-    max_pos_weight=1;
-    max_neg_weight=-1;
-    roundTargets=linspace(max_neg_weight,max_pos_weight,discrete_level);    
+    discrete_bits=8;
+    discrete_level=2^discrete_bits;
+    Theta1_max_pos=1.42;
+    Theta1_max_neg_=-1.69;
+    Theta2_max_pos=0;
+    Theta2_max_neg_=-5.4;
+    roundTheta1=linspace(Theta1_max_neg_,Theta1_max_pos,discrete_level);
+    roundTheta2=linspace(Theta2_max_neg_,Theta2_max_pos,discrete_level);
 end
 
 load('Train.mat');
@@ -89,35 +93,44 @@ for iter = 1:num_iters
     
     J(iter)=sum(sum(-y_tmp.*log(a3)-(1-y_tmp).*log(1-a3)))/m;
     [iter,J(iter)];
-
+    
     delt3=a3-y_tmp;
     delt2=Theta2'*delt3.*(a2.*(1-a2));
     delt2=delt2(2:end,:);
     Theta2_grad=delt3*a2'/m;
     Theta2_grad(:,2:end)=Theta2_grad(:,2:end);
     Theta1_grad=delt2*a1/m;
-    Theta1_grad(:,2:end)=Theta1_grad(:,2:end);   
+    Theta1_grad(:,2:end)=Theta1_grad(:,2:end);
     
     Theta1=Theta1-alpha*Theta1_grad;
     Theta2=Theta2-alpha*Theta2_grad;
     
     if discretization
-    Theta1 = interp1(roundTargets,roundTargets,Theta1,'nearest');
-    Theta2 = interp1(roundTargets,roundTargets,Theta2,'nearest');        
+        Theta1 = interp1(roundTheta1,roundTheta1,Theta1,'nearest');
+        Theta2 = interp1(roundTheta2,roundTheta2,Theta2,'nearest');
     end
     %find max weight
     if find_max_weight
-    Theta1_pos_max_tmp=max(Theta1(Theta1>0));
-    Theta1_pos_max=max(Theta1_pos_max_tmp,Theta1_pos_max);
-    
-    Theta1_neg_max_tmp=max(-Theta1(Theta1<0));
-    Theta1_neg_max=max(Theta1_neg_max_tmp,Theta1_neg_max);
-    
-    Theta2_pos_max_tmp=max(Theta2(Theta2>0));
-    Theta2_pos_max=max(Theta2_pos_max_tmp,Theta2_pos_max);
-    
-    Theta2_neg_max_tmp=max(-Theta2(Theta2<0));
-    Theta2_neg_max=max(Theta2_neg_max_tmp,Theta2_neg_max);
+        Theta1_pos_max_tmp=max(Theta1(Theta1>0));
+        if ~isempty(Theta1_pos_max_tmp)
+            Theta1_pos_max=max(Theta1_pos_max_tmp,Theta1_pos_max);
+        end
+        
+        Theta1_neg_max_tmp=max(-Theta1(Theta1<0));
+        if ~isempty(Theta1_neg_max_tmp)
+            Theta1_neg_max=max(Theta1_neg_max_tmp,Theta1_neg_max);
+        end
+                
+        Theta2_pos_max_tmp=max(Theta2(Theta2>0));
+        if ~isempty(Theta2_pos_max_tmp)
+            Theta2_pos_max=max(Theta2_pos_max_tmp,Theta2_pos_max);
+        end
+        
+        Theta2_neg_max_tmp=max(-Theta2(Theta2<0));
+        if ~isempty(Theta2_neg_max_tmp)
+            Theta2_neg_max=max(Theta2_neg_max_tmp,Theta2_neg_max);
+        end
+        
     end
 end
 Theta1_neg_max=-Theta1_neg_max;
@@ -149,7 +162,7 @@ predic=mean(double(pred == ytest)) * 100;
 toc
 
 if (0)
-plot(iterplot,J,'*')
-xlabel('iterations');ylabel('J')
+    plot(iterplot,J,'*')
+    xlabel('iterations');ylabel('J')
 end
 
