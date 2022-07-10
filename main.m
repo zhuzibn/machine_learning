@@ -7,6 +7,13 @@ hidden_layer_size = 25;   % 25 hidden units
 num_labels = 10;          % 10 labels, from 1 to 10
 % (note that we have mapped "0" to label 10)
 find_max_weight=0;
+discretization=0;%1/0: discretize/not-discretize the weight
+if discretization
+    discrete_level=100;
+    max_pos_weight=1;
+    max_neg_weight=-1;
+    roundTargets=linspace(max_neg_weight,max_pos_weight,discrete_level);    
+end
 
 load('Train.mat');
 y=cell2mat(Train(:,2))+1;
@@ -57,16 +64,18 @@ end
 %  advanced optimizers are able to train our cost functions efficiently as
 %  long as we provide them with the gradient computations.
 %
-fprintf('\nTraining Neural Network... \n')
 
 %% gradient descent
-num_iters=20;
-alpha = 0.3;
+num_iters=100;
+alpha = 0.7;
 J_ = zeros(num_iters, 1);
 a1=[ones(m,1) X];
 iterplot=[1:num_iters];
 
 Theta1_pos_max=0;
+Theta1_neg_max=0;
+Theta2_pos_max=0;
+Theta2_neg_max=0;
 
 for iter = 1:num_iters
     Theta1_grad = zeros(size(Theta1));
@@ -88,17 +97,31 @@ for iter = 1:num_iters
     Theta2_grad(:,2:end)=Theta2_grad(:,2:end);
     Theta1_grad=delt2*a1/m;
     Theta1_grad(:,2:end)=Theta1_grad(:,2:end);   
+    
     Theta1=Theta1-alpha*Theta1_grad;
     Theta2=Theta2-alpha*Theta2_grad;
     
+    if discretization
+    Theta1 = interp1(roundTargets,roundTargets,Theta1,'nearest');
+    Theta2 = interp1(roundTargets,roundTargets,Theta2,'nearest');        
+    end
     %find max weight
     if find_max_weight
-    Theta1_pos_max=max(Theta1(Theta1>0));
-    Theta1_neg_max=-max(-Theta1(Theta1<0));
-    Theta2_pos_max=max(Theta2(Theta2>0));
-    Theta2_neg_max=-max(-Theta2(Theta2<0));
+    Theta1_pos_max_tmp=max(Theta1(Theta1>0));
+    Theta1_pos_max=max(Theta1_pos_max_tmp,Theta1_pos_max);
+    
+    Theta1_neg_max_tmp=max(-Theta1(Theta1<0));
+    Theta1_neg_max=max(Theta1_neg_max_tmp,Theta1_neg_max);
+    
+    Theta2_pos_max_tmp=max(Theta2(Theta2>0));
+    Theta2_pos_max=max(Theta2_pos_max_tmp,Theta2_pos_max);
+    
+    Theta2_neg_max_tmp=max(-Theta2(Theta2<0));
+    Theta2_neg_max=max(Theta2_neg_max_tmp,Theta2_neg_max);
     end
 end
+Theta1_neg_max=-Theta1_neg_max;
+Theta2_neg_max=-Theta2_neg_max;
 
 if (0)
     %% Visualize Weights
@@ -122,6 +145,7 @@ pred = predict(Theta1, Theta2, Xtest);
 
 fprintf('\nTest Set Accuracy: %f\n', mean(double(pred == ytest)) * 100);
 predic=mean(double(pred == ytest)) * 100;
+%save('final.mat');
 toc
 
 if (0)
