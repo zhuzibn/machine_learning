@@ -1,20 +1,24 @@
 %% Initialization
-clear ; close all; clc;tic
+clear; close all; clc;tic
 ddebug=0;
 %% Setup the parameters you will use for this exercise
 input_layer_size  = 784;  % 28x28 Input Images of Digits
 hidden_layer_size = 25;   % 25 hidden units
 num_labels = 10;          % 10 labels, from 1 to 10
 % (note that we have mapped "0" to label 10)
-find_max_weight=1;
+find_max_weight=0;
 discretization=0;%1/0: discretize/not-discretize the weight
+nonlinearity=1;%1/0: weight update is nonlinear/linear
+nonlinear_fac=1;
+
+Theta1_max_pos=1.42;
+Theta1_max_neg_=-1.69;
+Theta2_max_pos=0;
+Theta2_max_neg_=-5.4;
+
 if discretization
     discrete_bits=8;
     discrete_level=2^discrete_bits;
-    Theta1_max_pos=1.42;
-    Theta1_max_neg_=-1.69;
-    Theta2_max_pos=0;
-    Theta2_max_neg_=-5.4;
     roundTheta1=linspace(Theta1_max_neg_,Theta1_max_pos,discrete_level);
     roundTheta2=linspace(Theta2_max_neg_,Theta2_max_pos,discrete_level);
 end
@@ -46,7 +50,9 @@ if ddebug
     load('storedweights.mat');
 else
     %Theta1 = randInitializeWeights(input_layer_size, hidden_layer_size);
+    Theta1_tmp=zeros(input_layer_size, hidden_layer_size);%preallocating an empty matrix for later use
     %Theta2 = randInitializeWeights(hidden_layer_size, num_labels);
+    Theta2_tmp=zeros(hidden_layer_size, num_labels);%preallocating an empty matrix for later use
     %save('storedrandomweights.mat','Theta1','Theta2')
     load('storedrandomweights.mat');
 end
@@ -71,7 +77,7 @@ end
 
 %% gradient descent
 num_iters=100;
-alpha = 0.7;
+alpha = 1;
 J_ = zeros(num_iters, 1);
 a1=[ones(m,1) X];
 iterplot=[1:num_iters];
@@ -102,6 +108,35 @@ for iter = 1:num_iters
     Theta1_grad=delt2*a1/m;
     Theta1_grad(:,2:end)=Theta1_grad(:,2:end);
     
+    if nonlinearity
+        G1max=Theta1_max_pos-Theta1_max_neg_;
+        G1min=0;        
+        Theta1_grad=nonlinearG(G1max,G1min,nonlinear_fac,Theta1,Theta1_grad);
+        
+        G2max=Theta2_max_pos-Theta2_max_neg_;
+        G2min=0;
+        Theta2_grad=nonlinearG(G2max,G2min,nonlinear_fac,Theta2,Theta2_grad);
+        if (0)%plot the nonlinear curve
+            nonlinear_fac=4;
+            P_=linspace(0,1,100);
+            G1max=Theta1_max_pos-Theta1_max_neg_;
+            G1min=0;
+            [G_i_Theta1,G_d_Theta1]=nonlinearG(G1max,G1min,nonlinear_fac,P_);
+            [G_i_Theta1_linear,G_d_Theta1_linear]=nonlinearG(G1max,G1min,0,P_);
+            
+            G2max=Theta2_max_pos-Theta2_max_neg_;
+            G2min=0;
+            [G_i_Theta2,G_d_Theta2]=nonlinearG(G2max,G2min,nonlinear_fac,P_);
+            [G_i_Theta2_linear,G_d_Theta2_linear]=nonlinearG(G2max,G2min,0,P_);
+            
+            if (0)
+                figure;hold on
+                plot(P_,G_i_Theta1_linear)
+                plot(P_,G_d_Theta1_linear)
+            end
+        end
+    end
+    
     Theta1=Theta1-alpha*Theta1_grad;
     Theta2=Theta2-alpha*Theta2_grad;
     
@@ -120,7 +155,7 @@ for iter = 1:num_iters
         if ~isempty(Theta1_neg_max_tmp)
             Theta1_neg_max=max(Theta1_neg_max_tmp,Theta1_neg_max);
         end
-                
+        
         Theta2_pos_max_tmp=max(Theta2(Theta2>0));
         if ~isempty(Theta2_pos_max_tmp)
             Theta2_pos_max=max(Theta2_pos_max_tmp,Theta2_pos_max);
