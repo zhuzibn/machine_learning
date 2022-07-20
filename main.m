@@ -9,9 +9,8 @@ num_labels = 10;          % 10 labels, from 1 to 10
 find_max_weight=0;
 discretization=0;%1/0: discretize/not-discretize the weight
 nonlinearity=1;%1/0: weight update is nonlinear/linear
-nonlinear_fac=1;
 
-Theta1_max_pos=1.42;
+Theta1_max_pos=1.42; %these max values are obtained by running 1000 iterations
 Theta1_max_neg_=-1.69;
 Theta2_max_pos=0;
 Theta2_max_neg_=-5.4;
@@ -21,6 +20,14 @@ if discretization
     discrete_level=2^discrete_bits;
     roundTheta1=linspace(Theta1_max_neg_,Theta1_max_pos,discrete_level);
     roundTheta2=linspace(Theta2_max_neg_,Theta2_max_pos,discrete_level);
+end
+
+if nonlinearity
+    nonlinear_fac=1;
+    if nonlinear_fac==0
+       error('in the nonlinear mode, do not set nonlinear_fac to zero') 
+       %In the nonlinear mode, you should set nonlinearity=0
+    end
 end
 
 load('Train.mat');
@@ -76,7 +83,7 @@ end
 %
 
 %% gradient descent
-num_iters=100;
+num_iters=10;
 alpha = 1;
 J_ = zeros(num_iters, 1);
 a1=[ones(m,1) X];
@@ -117,23 +124,19 @@ for iter = 1:num_iters
         G2min=0;
         Theta2_grad=nonlinearG(G2max,G2min,nonlinear_fac,Theta2,Theta2_grad);
         if (0)%plot the nonlinear curve
-            nonlinear_fac=4;
             P_=linspace(0,1,100);
-            G1max=Theta1_max_pos-Theta1_max_neg_;
-            G1min=0;
-            [G_i_Theta1,G_d_Theta1]=nonlinearG(G1max,G1min,nonlinear_fac,P_);
-            [G_i_Theta1_linear,G_d_Theta1_linear]=nonlinearG(G1max,G1min,0,P_);
             
-            G2max=Theta2_max_pos-Theta2_max_neg_;
-            G2min=0;
-            [G_i_Theta2,G_d_Theta2]=nonlinearG(G2max,G2min,nonlinear_fac,P_);
-            [G_i_Theta2_linear,G_d_Theta2_linear]=nonlinearG(G2max,G2min,0,P_);
+            [G_i_Theta1,G_d_Theta1]=nonlinearG_plot(G1max,G1min,nonlinear_fac,P_);
+            [G_i_Theta1_linear,G_d_Theta1_linear]=nonlinearG_plot(G1max,G1min,0,P_);
             
-            if (0)
-                figure;hold on
-                plot(P_,G_i_Theta1_linear)
-                plot(P_,G_d_Theta1_linear)
-            end
+            [G_i_Theta2,G_d_Theta2]=nonlinearG_plot(G2max,G2min,nonlinear_fac,P_);
+            [G_i_Theta2_linear,G_d_Theta2_linear]=nonlinearG_plot(G2max,G2min,0,P_);
+            
+            figure;hold on
+            plot(P_,G_i_Theta1_linear)
+            plot(P_,G_d_Theta1_linear)
+            xlabel('Pulse');ylabel('G')
+            
         end
     end
     
